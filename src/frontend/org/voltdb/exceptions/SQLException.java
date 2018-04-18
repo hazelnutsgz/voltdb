@@ -41,6 +41,21 @@ public class SQLException extends SerializableException {
         assert(state.length() == 5);
     }
 
+    public SQLException(String sqlState, String message) {
+        super(message);
+        assert(sqlState.length() == 5);
+        byte[] sqlStateBytes = null;
+        try {
+            sqlStateBytes = sqlState.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e1) {
+            sqlStateBytes = new byte[5];
+            e1.printStackTrace();
+            assert(false);
+        }
+        assert(sqlStateBytes.length == 5);
+        m_sqlState = sqlStateBytes;
+    }
+
     public SQLException(String sqlState) {
         assert(sqlState.length() == 5);
         byte[] sqlStateBytes = null;

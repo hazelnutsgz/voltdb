@@ -94,7 +94,7 @@ class TempTable : public AbstractTempTable {
     virtual void deleteAllTuples(bool freeAllocatedStrings, bool = true);
     // TODO: change meaningless bool return type to void (starting in class Table) and migrate callers.
     // -- Most callers should be using TempTable::insertTempTuple, anyway.
-    virtual bool insertTuple(TableTuple &tuple);
+    virtual bool insertTuple(TableTuple &tuple, size_t* drBufferChanged = NULL);
 
     void deleteAllTempTupleDeepCopies();
 

@@ -381,6 +381,21 @@ class ExecutorContext {
         m_tuplesModifiedStack.top() += amount;
     }
 
+    void pushNewDRBufferChangedCounter() { m_drBufferChangedStack.push(0); }
+    void popDRBufferChangedCounter() { m_drBufferChangedStack.pop(); }
+    const size_t getDRBufferChanged() const {
+        if (m_drBufferChangedStack.size() > 0) {
+            return m_drBufferChangedStack.top();
+        }
+        return 0;
+    }
+
+    const size_t getDRBufferChangedStackStackSize() const { return m_drBufferChangedStack.size(); }
+    void addToDRBufferChanged(size_t amount) {
+        assert(m_drBufferChangedStack.size() > 0);
+        m_drBufferChangedStack.top() += amount;
+    }
+
     /**
      * Called just before a potentially long-running operation
      * begins execution.
@@ -469,6 +484,7 @@ class ExecutorContext {
      * most deeply nested executing plan fragment.
      */
     std::stack<int64_t> m_tuplesModifiedStack;
+    std::stack<size_t> m_drBufferChangedStack;
 
     // Executor stack map. The key is the statement id (0 means the main/parent statement)
     // The value is the pointer to the executor stack for that statement

@@ -198,7 +198,8 @@ size_t DRTupleStream::appendTuple(int64_t lastCommittedSpHandle,
                                   int64_t spHandle,
                                   int64_t uniqueId,
                                   TableTuple &tuple,
-                                  DRRecordType type)
+                                  DRRecordType type,
+                                  size_t* drBufferChanged)
 {
     if (m_guarded) return INVALID_DR_MARK;
 
@@ -267,6 +268,12 @@ size_t DRTupleStream::appendTuple(int64_t lastCommittedSpHandle,
     // update uso.
     m_uso += io.position();
 
+    // update drBufferChangedSize
+    if (drBufferChanged != NULL) {
+        *drBufferChanged += io.position();
+        VOLT_DEBUG("DRTupleStream AppendTuple DR Buffer Change to %d, io.position %d, at %d, m_uso %d, tupleMaxLength %d.",
+                   (int)*drBufferChanged, (int)io.position(), (int) m_currBlock->offset(), (int)m_uso, (int) tupleMaxLength);
+    }
     // update row count
     m_txnRowCount += rowCostForDRRecord(type);
 
@@ -280,7 +287,8 @@ size_t DRTupleStream::appendUpdateRecord(int64_t lastCommittedSpHandle,
                                          int64_t spHandle,
                                          int64_t uniqueId,
                                          TableTuple &oldTuple,
-                                         TableTuple &newTuple)
+                                         TableTuple &newTuple,
+                                         size_t* drBufferChanged)
 {
     if (m_guarded) return INVALID_DR_MARK;
 
@@ -350,6 +358,12 @@ size_t DRTupleStream::appendUpdateRecord(int64_t lastCommittedSpHandle,
     // update uso.
     m_uso += io.position();
 
+    // update drBufferChangedSize
+    if (drBufferChanged != NULL) {
+        *drBufferChanged += io.position();
+        VOLT_DEBUG("DRTupleStream AppendUpdateTuple DR Buffer Change to %d, io.position %d, at %d, m_uso %d, tupleMaxLength %d.",
+                             (int)*drBufferChanged, (int)io.position(), (int) m_currBlock->offset(), (int)m_uso, (int) tupleMaxLength);
+    }
     // update row count
     m_txnRowCount += rowCostForDRRecord(type);
 

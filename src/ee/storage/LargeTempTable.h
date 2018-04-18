@@ -72,7 +72,7 @@ public:
     virtual void deleteAllTempTuples();
 
     /** insert a tuple into this table */
-    bool insertTuple(TableTuple& tuple);
+    bool insertTuple(TableTuple& tuple, size_t* drBufferChanged = NULL);
 
     /** insert a tuple into this table */
     virtual void insertTempTuple(TableTuple &source) {

@@ -79,6 +79,7 @@ class InsertExecutor : public AbstractExecutor
         m_nowFields(),
         m_targetTable(NULL),
         m_modifiedTuples(0),
+        m_drBufferChanged(0),
         m_count_tuple(),
         m_persistentTable(NULL),
         m_upsertTuple(),
@@ -175,6 +176,7 @@ class InsertExecutor : public AbstractExecutor
      */
     Table* m_targetTable;
     int64_t m_modifiedTuples;
+    size_t m_drBufferChanged;
     static int64_t s_modifiedTuples;
     TableTuple m_count_tuple;
     PersistentTable* m_persistentTable;

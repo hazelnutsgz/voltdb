@@ -130,7 +130,7 @@ void StreamedTable::nextFreeTuple(TableTuple *) {
                                   "May not use nextFreeTuple with streamed tables.");
 }
 
-bool StreamedTable::insertTuple(TableTuple &source)
+bool StreamedTable::insertTuple(TableTuple &source, size_t* drBufferChanged)
 {
     // not null checks at first
     FAIL_IF(!checkNulls(source)) {

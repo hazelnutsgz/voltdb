@@ -36,6 +36,7 @@ import org.voltdb.StoredProcedureInvocation;
 import org.voltdb.VoltTable;
 import org.voltdb.dtxn.TransactionState;
 import org.voltdb.exceptions.ReplicatedTableException;
+import org.voltdb.exceptions.SQLException;
 import org.voltdb.exceptions.SerializableException;
 import org.voltdb.exceptions.TransactionRestartException;
 import org.voltdb.exceptions.TransactionTerminationException;
@@ -54,6 +55,10 @@ import com.google_voltpatches.common.collect.Maps;
 public class MpTransactionState extends TransactionState
 {
     static VoltLogger tmLog = new VoltLogger("TM");
+
+    private static final int MAX_DR_BUFFER_SIZE = (45 * 1024 * 1024) + 4096;
+    private static final String volt_output_buffer_overflow = "V0001";
+
     /**
      *  This is thrown by the TransactionState instance when something
      *  goes wrong mid-fragment, and execution needs to back all the way
@@ -70,6 +75,7 @@ public class MpTransactionState extends TransactionState
     Map<Integer, Set<Long>> m_remoteDeps;
     Map<Integer, List<VoltTable>> m_remoteDepTables =
         new HashMap<Integer, List<VoltTable>>();
+    private int m_drBufferChangedAgg = 0;
     final List<Long> m_useHSIds = new ArrayList<Long>();
     final Map<Integer, Long> m_masterHSIds = Maps.newHashMap();
     long m_buddyHSId;
@@ -146,6 +152,7 @@ public class MpTransactionState extends TransactionState
         m_remoteWork = null;
         m_remoteDeps = null;
         m_remoteDepTables.clear();
+        m_drBufferChangedAgg = 0;
     }
 
     // I met this List at bandcamp...
@@ -258,6 +265,9 @@ public class MpTransactionState extends TransactionState
             // Create some record of expected dependencies for tracking
             m_remoteDeps = createTrackedDependenciesFromTask(m_remoteWork,
                                                              m_useHSIds);
+
+            // clear up DR buffer size tracker
+            m_drBufferChangedAgg = 0;
             // if there are remote deps, block on them
             // FragmentResponses indicating failure will throw an exception
             // which will propagate out of handleReceivedFragResponse and
@@ -276,6 +286,7 @@ public class MpTransactionState extends TransactionState
                     checkForException(msg);
                 }
             }
+            checkForDRBufferLimit();
         }
         // satisfied. Clear this defensively. Procedure runner is sloppy with
         // cleaning up if it decides new work is necessary that is local-only.
@@ -402,7 +413,17 @@ public class MpTransactionState extends TransactionState
         }
     }
 
-    private boolean trackDependency(long hsid, int depId, VoltTable table)
+    private void checkForDRBufferLimit() {
+        tmLog.debug("drBufferChanged: " + m_drBufferChangedAgg + " limit:" + MAX_DR_BUFFER_SIZE);
+        if (m_drBufferChangedAgg >= MAX_DR_BUFFER_SIZE) {
+            tmLog.debug("rollback for dr limit");
+            setNeedsRollback(true);
+            throw new SQLException(volt_output_buffer_overflow,
+                    "Aggregate MP Transaction requiring " + m_drBufferChangedAgg + " bytes  exceeds max DR Buffer size of " + MAX_DR_BUFFER_SIZE + " bytes.");
+        }
+    }
+
+    private boolean trackDependency(long hsid, int depId, VoltTable table, int drBufferSize)
     {
         // Remove the distributed fragment for this site from remoteDeps
         // for the dependency Id depId.
@@ -435,6 +456,9 @@ public class MpTransactionState extends TransactionState
             // null dependency table is from a joining node, has no content, drop it
             if (table.getStatusCode() != VoltTableUtil.NULL_DEPENDENCY_STATUS) {
                 tables.add(table);
+                tmLog.debug("[trackDependency]:  drBufferSize:" + drBufferSize + " m_drBufferChangedAgg: " + m_drBufferChangedAgg);
+                // add up dr buffer change size
+                m_drBufferChangedAgg += drBufferSize;
             }
         }
         else if (tmLog.isDebugEnabled()){
@@ -451,7 +475,8 @@ public class MpTransactionState extends TransactionState
             int this_depId = msg.getTableDependencyIdAtIndex(i);
             VoltTable this_dep = msg.getTableAtIndex(i);
             long src_hsid = msg.getExecutorSiteId();
-            expectedMsg |= trackDependency(src_hsid, this_depId, this_dep);
+            int drBufferChanged = msg.getDRBufferChangedAtIndex(i);
+            expectedMsg |= trackDependency(src_hsid, this_depId, this_dep, drBufferChanged);
         }
         return expectedMsg;
     }

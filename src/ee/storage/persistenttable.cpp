@@ -798,12 +798,12 @@ void PersistentTable::insertTupleIntoDeltaTable(TableTuple& source, bool fallibl
  * Regular tuple insertion that does an allocation and copy for
  * uninlined strings and creates and registers an UndoAction.
  */
-bool PersistentTable::insertTuple(TableTuple& source) {
-    insertPersistentTuple(source, true);
+bool PersistentTable::insertTuple(TableTuple& source, size_t* drBufferChanged) {
+    insertPersistentTuple(source, true, false, drBufferChanged);
     return true;
 }
 
-void PersistentTable::insertPersistentTuple(TableTuple& source, bool fallible, bool ignoreTupleLimit) {
+void PersistentTable::insertPersistentTuple(TableTuple& source, bool fallible, bool ignoreTupleLimit, size_t* drBufferChanged) {
     if (!ignoreTupleLimit && fallible && visibleTupleCount() >= m_tupleLimit) {
         std::ostringstream str;
         str << "Table " << m_name << " exceeds table maximum row count " << m_tupleLimit;
@@ -823,7 +823,7 @@ void PersistentTable::insertPersistentTuple(TableTuple& source, bool fallible, b
     target.copyForPersistentInsert(source); // tuple in freelist must be already cleared
 
     try {
-        insertTupleCommon(source, target, fallible);
+        insertTupleCommon(source, target, fallible, true, false, drBufferChanged);
     }
     catch (ConstraintFailureException& e) {
         deleteTupleStorage(target); // also frees object columns
@@ -836,7 +836,7 @@ void PersistentTable::insertPersistentTuple(TableTuple& source, bool fallible, b
 }
 
 void PersistentTable::doInsertTupleCommon(TableTuple& source, TableTuple& target,
-                                        bool fallible, bool shouldDRStream, bool delayTupleDelete) {
+                                        bool fallible, bool shouldDRStream, bool delayTupleDelete, size_t* drBufferChanged) {
     if (fallible) {
         // not null checks at first
         FAIL_IF(!checkNulls(target)) {
@@ -859,7 +859,7 @@ void PersistentTable::doInsertTupleCommon(TableTuple& source, TableTuple& target
         int64_t currentSpHandle = ec->currentSpHandle();
         int64_t currentUniqueId = ec->currentUniqueId();
         size_t drMark = drStream->appendTuple(lastCommittedSpHandle, m_signature, m_partitionColumn, currentSpHandle,
-                                              currentUniqueId, target, DR_RECORD_INSERT);
+                                              currentUniqueId, target, DR_RECORD_INSERT, drBufferChanged);
 
         UndoQuantum* uq = ExecutorContext::currentUndoQuantum();
         if (uq && fallible) {
@@ -926,9 +926,9 @@ void PersistentTable::doInsertTupleCommon(TableTuple& source, TableTuple& target
 }
 
 void PersistentTable::insertTupleCommon(TableTuple& source, TableTuple& target,
-                                        bool fallible, bool shouldDRStream, bool delayTupleDelete) {
+                                        bool fallible, bool shouldDRStream, bool delayTupleDelete, size_t* drBufferChanged) {
     // If the target table is a replicated table, only one thread can reach here.
-    doInsertTupleCommon(source, target, fallible, shouldDRStream, delayTupleDelete);
+    doInsertTupleCommon(source, target, fallible, shouldDRStream, delayTupleDelete, drBufferChanged);
 
     BOOST_FOREACH (auto viewHandler, m_viewHandlers) {
         viewHandler->handleTupleInsert(this, fallible);
@@ -978,7 +978,8 @@ void PersistentTable::updateTupleWithSpecificIndexes(TableTuple& targetTupleToUp
                                                      TableTuple& sourceTupleWithNewValues,
                                                      std::vector<TableIndex*> const& indexesToUpdate,
                                                      bool fallible,
-                                                     bool updateDRTimestamp) {
+                                                     bool updateDRTimestamp,
+                                                     size_t* drBufferChanged) {
     UndoQuantum* uq = NULL;
     char* oldTupleData = NULL;
     int tupleLength = targetTupleToUpdate.tupleLength();
@@ -1029,7 +1030,7 @@ void PersistentTable::updateTupleWithSpecificIndexes(TableTuple& targetTupleToUp
         int64_t currentSpHandle = ec->currentSpHandle();
         int64_t currentUniqueId = ec->currentUniqueId();
         size_t drMark = drStream->appendUpdateRecord(lastCommittedSpHandle, m_signature, m_partitionColumn, currentSpHandle,
-                                                     currentUniqueId, targetTupleToUpdate, sourceTupleWithNewValues);
+                                                     currentUniqueId, targetTupleToUpdate, sourceTupleWithNewValues, drBufferChanged);
 
         UndoQuantum* uq = ExecutorContext::currentUndoQuantum();
         if (uq && fallible) {
@@ -1223,7 +1224,7 @@ void PersistentTable::updateTupleForUndo(char* tupleWithUnwantedValues,
     }
 }
 
-void PersistentTable::deleteTuple(TableTuple& target, bool fallible) {
+void PersistentTable::deleteTuple(TableTuple& target, bool fallible, size_t* drBufferChanged) {
     UndoQuantum* uq = ExecutorContext::currentUndoQuantum();
     bool createUndoAction = fallible && (uq != NULL);
 
@@ -1242,7 +1243,7 @@ void PersistentTable::deleteTuple(TableTuple& target, bool fallible) {
         int64_t currentSpHandle = ec->currentSpHandle();
         int64_t currentUniqueId = ec->currentUniqueId();
         size_t drMark = drStream->appendTuple(lastCommittedSpHandle, m_signature, m_partitionColumn, currentSpHandle,
-                                              currentUniqueId, target, DR_RECORD_DELETE);
+                                              currentUniqueId, target, DR_RECORD_DELETE, drBufferChanged);
 
         if (createUndoAction) {
             uq->registerUndoAction(new (*uq) DRTupleStreamUndoAction(drStream, drMark, rowCostForDRRecord(DR_RECORD_DELETE)));
