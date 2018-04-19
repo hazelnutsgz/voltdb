@@ -38,6 +38,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.concurrent.Future;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -70,40 +71,79 @@ public class TestLargeBlockManagerSuite {
         assertTrue(swapDirIsEmpty());
     }
 
-    @Test
-    public void testBasic() throws IOException {
-        LargeBlockManager lbm = LargeBlockManager.getInstance();
-        assertNotNull(lbm);
+//    @Test
+//    public void testBasic() throws IOException {
+//        LargeBlockManager lbm = LargeBlockManager.getInstance();
+//        assertNotNull(lbm);
+//
+//        ByteBuffer block = ByteBuffer.allocate(32); // space for four longs
+//        for (long i = 1000; i < 5000; i += 1000) {
+//            block.putLong(i);
+//        }
+//
+//        // Store a block...
+//        long siteId = 555;
+//        long blockId = 333;
+//        long address = 0xDEADBEEF;
+//        lbm.storeBlock(new BlockId(siteId, blockId), address, block);
+//
+//        Path blockPath = lbm.makeBlockPath(new BlockId(siteId, blockId));
+//        assertThat(blockPath.toString(), endsWith("large_query_swap/555___333.block"));
+//        assertTrue(Files.exists(blockPath));
+//
+//        // Load the block back into memory
+//        ByteBuffer loadedBlock = ByteBuffer.allocateDirect(32);
+//        long origAddress = lbm.loadBlock(new BlockId(siteId, blockId), loadedBlock);
+//        assertEquals(address, origAddress);
+//
+//        // Ensure the block contains the expected data
+//        loadedBlock.position(0);
+//        for (long i = 1000;  i < 5000; i += 1000) {
+//            assertEquals(i, loadedBlock.getLong());
+//        }
+//
+//        // Release the block
+//        lbm.releaseBlock(new BlockId(siteId, blockId));
+//        assertTrue( ! Files.exists(blockPath));
+//    }
 
+    @Test
+    public void testExecutorServiceInterface() throws Exception {
+        LargeBlockManager lbm = LargeBlockManager.getInstance();
         ByteBuffer block = ByteBuffer.allocate(32); // space for four longs
         for (long i = 1000; i < 5000; i += 1000) {
             block.putLong(i);
         }
 
         // Store a block...
-        long siteId = 555;
-        long blockId = 333;
+        BlockId blockId = new BlockId(555, 333);
         long address = 0xDEADBEEF;
-        lbm.storeBlock(new BlockId(siteId, blockId), address, block);
 
-        Path blockPath = lbm.makeBlockPath(new BlockId(siteId, blockId));
+        LargeBlockTask storeTask = LargeBlockTask.getStoreTask(blockId, address, block);
+        Future<LargeBlockResponse> responseFuture = lbm.submitTask(storeTask);
+        assertTrue(responseFuture.get().wasSuccessful());
+
+        // Make sure we actually wrote something
+        Path blockPath = lbm.makeBlockPath(blockId);
         assertThat(blockPath.toString(), endsWith("large_query_swap/555___333.block"));
         assertTrue(Files.exists(blockPath));
 
         // Load the block back into memory
         ByteBuffer loadedBlock = ByteBuffer.allocateDirect(32);
         long origAddress = lbm.loadBlock(new BlockId(siteId, blockId), loadedBlock);
-        assertEquals(address, origAddress);
+//        assertEquals(address, origAddress);
+//
+//        // Ensure the block contains the expected data
+//        loadedBlock.position(0);
+//        for (long i = 1000;  i < 5000; i += 1000) {
+//            assertEquals(i, loadedBlock.getLong());
+//        }
 
-        // Ensure the block contains the expected data
-        loadedBlock.position(0);
-        for (long i = 1000;  i < 5000; i += 1000) {
-            assertEquals(i, loadedBlock.getLong());
-        }
 
-        // Release the block
-        lbm.releaseBlock(new BlockId(siteId, blockId));
-        assertTrue( ! Files.exists(blockPath));
+        // Release the block.
+        LargeBlockTask releaseTask = LargeBlockTask.getReleaseTask(blockId);
+        responseFuture = lbm.submitTask(releaseTask);
+        assertTrue(responseFuture.get().wasSuccessful());
     }
 
     @Test

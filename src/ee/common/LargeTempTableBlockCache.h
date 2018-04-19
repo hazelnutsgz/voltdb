@@ -46,7 +46,8 @@ class TupleSchema;
  * containing variable length data) for all large temp tables
  * currently in use.
  */
-class LargeTempTableBlockCache {
+class
+LargeTempTableBlockCache {
 
     friend class ::LargeTempTableTest_OverflowCache;
 

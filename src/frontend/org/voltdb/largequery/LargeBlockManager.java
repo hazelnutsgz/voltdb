@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.*;
 
 import org.voltdb.utils.VoltFile;
 
@@ -155,9 +156,15 @@ public class LargeBlockManager {
         }
     }
 
+    public Future<LargeBlockResponse> submitTask(LargeBlockTask task) {
+        FutureTask futureTask = new FutureTask<>(task);
+        futureTask.run();
+        return futureTask;
+    }
+
     /**
      * Store the given block with the given ID to disk.
-     * @param id           the ID of the block
+     * @param blockId           the ID of the block
      * @param origAddress  the original address of the block
      * @param block        the bytes for the block
      * @throws IOException
