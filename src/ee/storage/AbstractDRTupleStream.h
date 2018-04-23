@@ -71,8 +71,7 @@ public:
                        int64_t spHandle,
                        int64_t uniqueId,
                        TableTuple &tuple,
-                       DRRecordType type,
-                       size_t* drBufferChanged = NULL) = 0;
+                       DRRecordType type) = 0;
 
     /**
      * write an update record to the stream
@@ -84,8 +83,7 @@ public:
                        int64_t spHandle,
                        int64_t uniqueId,
                        TableTuple &oldTuple,
-                       TableTuple &newTuple,
-                       size_t* drBufferChanged = NULL) = 0;
+                       TableTuple &newTuple) = 0;
 
     virtual size_t truncateTable(int64_t lastCommittedSpHandle,
                        char *tableHandle,

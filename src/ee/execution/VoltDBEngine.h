@@ -221,8 +221,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
          * subqueries.
          */
         UniqueTempTableResult executePlanFragment(ExecutorVector* executorVector,
-                                                  int64_t* tuplesModified = NULL,
-                                                  size_t* drBufferChanged = NULL);
+                                                  int64_t* tuplesModified = NULL);
 
         // Call user-defined function
         NValue callJavaUserDefinedFunction(int32_t functionId, std::vector<NValue>& arguments);
@@ -393,10 +392,6 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         /** DML executors call this to indicate how many tuples
          * have been modified */
         void addToTuplesModified(int64_t amount);
-
-        /** DML executors call this to indicate how large dr Buffer sized
-        * have been used */
-        void addToDrBufferModified(size_t amount);
 
         // -------------------------------------------------
         // Statistics functions
@@ -767,7 +762,6 @@ class __attribute__((visibility("default"))) VoltDBEngine {
                 4 + // tuple count
                 4 + // first row size
                 8;// modified tuples
-
 
         Topend* m_topend;
 

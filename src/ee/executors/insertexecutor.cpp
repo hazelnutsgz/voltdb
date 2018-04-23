@@ -189,8 +189,6 @@ bool InsertExecutor::p_execute_init_internal(const TupleSchema *inputSchema,
     // count the number of successful inserts
     m_modifiedTuples = 0;
 
-    m_drBufferChanged = 0;
-
     m_tmpOutputTable = newOutputTable;
     assert(m_tmpOutputTable);
     m_count_tuple = m_tmpOutputTable->tempTuple();
@@ -333,8 +331,7 @@ void InsertExecutor::p_execute_tuple_internal(TableTuple &tuple) {
                                     m_templateTuple.getNValue(fieldMap[i]));
             }
             m_persistentTable->updateTupleWithSpecificIndexes(existsTuple, tempTuple,
-                                                              m_persistentTable->allIndexes(), true, true,
-                                                              &m_drBufferChanged);
+                                                              m_persistentTable->allIndexes());
             // successfully updated
             ++m_modifiedTuples;
             return;
@@ -392,10 +389,6 @@ void InsertExecutor::p_execute_finish() {
 
     // add to the planfragments count of modified tuples
     m_engine->addToTuplesModified(m_modifiedTuples);
-
-    VOLT_DEBUG("InsertExecutor Add DR Buffer Change to %d", (int)drBufferChanged);
-    m_engine->addToDrBufferModified(m_drBufferChanged);
-
     VOLT_DEBUG("Finished inserting %" PRId64 " tuples", m_modifiedTuples);
     VOLT_TRACE("InsertExecutor output table:\n%s\n", m_tmpOutputTable->debug().c_str());
     VOLT_TRACE("InsertExecutor target table:\n%s\n", m_targetTable->debug().c_str());

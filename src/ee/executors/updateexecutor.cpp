@@ -137,7 +137,7 @@ bool UpdateExecutor::p_execute(const NValueArray &params) {
     VOLT_TRACE("TARGET TABLE - BEFORE: %s\n", targetTable->debug("").c_str());
 
     int64_t modified_tuples = 0;
-    size_t drBufferChanged = 0;
+
     {
         assert(m_replicatedTableOperation == targetTable->isCatalogTableReplicated());
         ConditionalSynchronizedExecuteWithMpMemory possiblySynchronizedUseMpMemory(
@@ -212,8 +212,7 @@ bool UpdateExecutor::p_execute(const NValueArray &params) {
                 }
 
                 targetTable->updateTupleWithSpecificIndexes(targetTuple, tempTuple,
-                                                            indexesToUpdate, true, true,
-                                                            &drBufferChanged);
+                                                            indexesToUpdate);
             }
             modified_tuples = m_inputTable->tempTableTupleCount();
             s_modifiedTuples = modified_tuples;
@@ -246,9 +245,6 @@ bool UpdateExecutor::p_execute(const NValueArray &params) {
 
     // add to the planfragments count of modified tuples
     m_engine->addToTuplesModified(m_inputTable->tempTableTupleCount());
-
-    VOLT_DEBUG("UpdateExecutor Add DR Buffer Change to %d", (int)drBufferChanged);
-    m_engine->addToDrBufferModified(drBufferChanged);
 
     return true;
 }

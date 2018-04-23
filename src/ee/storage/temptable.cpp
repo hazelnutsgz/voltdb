@@ -81,7 +81,7 @@ void TempTable::deleteAllTempTupleDeepCopies() {
     deleteAllTempTuples();
 }
 
-bool TempTable::insertTuple(TableTuple &source, size_t* drBufferChanged) {
+bool TempTable::insertTuple(TableTuple &source) {
     insertTempTuple(source);
     return true;
 }

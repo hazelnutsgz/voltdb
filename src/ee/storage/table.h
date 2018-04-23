@@ -125,7 +125,7 @@ class Table {
     virtual void deleteAllTuples(bool freeAllocatedStrings, bool fallible=true) = 0;
     // TODO: change meaningless bool return type to void (starting in class Table) and migrate callers.
     // -- Most callers should be using TempTable::insertTempTuple, anyway.
-    virtual bool insertTuple(TableTuple& tuple, size_t* drBufferChanged = NULL) = 0;
+    virtual bool insertTuple(TableTuple& tuple) = 0;
 
     // ------------------------------------------------------------------
     // TUPLES AND MEMORY USAGE

@@ -548,16 +548,14 @@ int VoltDBEngine::executePlanFragment(int64_t planfragmentId,
     // (I.e., DELETE triggered by an insert to enforce ROW LIMIT)
     // This method only executes top-level fragments.
     assert(m_executorContext->getModifiedTupleStackSize() == 0);
-    assert(m_executorContext->getDRBufferChangedStackStackSize() == 0);
 
     int64_t tuplesModified = 0;
-    size_t drBufferChanged = 0;
     try {
         // execution lists for planfragments are cached by planfragment id
         setExecutorVectorForFragmentId(planfragmentId);
         assert(m_currExecutorVec);
 
-        executePlanFragment(m_currExecutorVec, &tuplesModified, &drBufferChanged);
+        executePlanFragment(m_currExecutorVec, &tuplesModified);
     }
     catch (const SerializableEEException &e) {
         serializeException(e);
@@ -608,11 +606,10 @@ int VoltDBEngine::executePlanFragment(int64_t planfragmentId,
     return ENGINE_ERRORCODE_SUCCESS;
 }
 
-UniqueTempTableResult VoltDBEngine::executePlanFragment(ExecutorVector* executorVector, int64_t* tuplesModified, size_t* drBufferChanged) {
+UniqueTempTableResult VoltDBEngine::executePlanFragment(ExecutorVector* executorVector, int64_t* tuplesModified) {
     UniqueTempTableResult result;
     // set this to zero for dml operations
     m_executorContext->pushNewModifiedTupleCounter();
-    m_executorContext->pushNewDRBufferChangedCounter();
 
     // execution lists for planfragments are cached by planfragment id
     try {
@@ -627,10 +624,6 @@ UniqueTempTableResult VoltDBEngine::executePlanFragment(ExecutorVector* executor
 
     if (tuplesModified != NULL) {
         *tuplesModified = m_executorContext->getModifiedTupleCount();
-    }
-
-    if (drBufferChanged != NULL) {
-        *drBufferChanged = m_executorContext->getDRBufferChanged();
     }
 
     m_executorContext->resetExecutionMetadata(executorVector);
@@ -729,10 +722,18 @@ void VoltDBEngine::serializeException(const SerializableEEException& e) {
 // RESULT FUNCTIONS
 // -------------------------------------------------
 void VoltDBEngine::send(Table* dependency) {
-    VOLT_DEBUG("Sending Dependency from C++, %d drBufferChanged", (int)m_executorContext->getDRBufferChanged());
+    VOLT_DEBUG("Sending Dependency from C++");
     // legacy placeholder for old output id
     // repurpose the placeholder to store bytes of Buffer allocated for DR
-    m_resultOutput.writeInt(static_cast<int>(m_executorContext->getDRBufferChanged()));
+
+    size_t drBufferChanged = size_t(0);
+    if (m_drStream) {
+        drBufferChanged = m_drStream->m_uso - m_drStream->m_committedUso;
+        if (m_drReplicatedStream) {
+            drBufferChanged += m_drReplicatedStream->m_uso - m_drReplicatedStream->m_committedUso;
+        }
+    }
+    m_resultOutput.writeInt(static_cast<int>(drBufferChanged));
     dependency->serializeTo(m_resultOutput);
     m_numResultDependencies++;
 }
@@ -2692,7 +2693,6 @@ void VoltDBEngine::executePurgeFragment(PersistentTable* table) {
     // send this count back to the client---too confusing.  Just
     // throw it away.
     m_executorContext->pushNewModifiedTupleCounter();
-    m_executorContext->pushNewDRBufferChangedCounter();
     pev->setupContext(m_executorContext);
 
     try {
@@ -2702,24 +2702,18 @@ void VoltDBEngine::executePurgeFragment(PersistentTable* table) {
         // restore original DML statement state.
         m_currExecutorVec->setupContext(m_executorContext);
         m_executorContext->popModifiedTupleCounter();
-        m_executorContext->popDRBufferChangedCounter();
         throw;
     }
 
     // restore original DML statement state.
     m_currExecutorVec->setupContext(m_executorContext);
     m_executorContext->popModifiedTupleCounter();
-    m_executorContext->popDRBufferChangedCounter();
 }
 
 static std::string dummy_last_accessed_plan_node_name("no plan node in progress");
 
 void VoltDBEngine::addToTuplesModified(int64_t amount) {
     m_executorContext->addToTuplesModified(amount);
-}
-
-void VoltDBEngine::addToDrBufferModified(size_t amount) {
-    m_executorContext->addToDRBufferChanged(amount);
 }
 
 void TempTableTupleDeleter::operator()(AbstractTempTable* tbl) const {

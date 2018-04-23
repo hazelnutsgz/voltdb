@@ -65,7 +65,7 @@ public:
     // ------------------------------------------------------------------
     virtual void deleteAllTuples(bool freeAllocatedStrings, bool=true);
     // TODO: change meaningless bool return type to void (starting in class Table) and migrate callers.
-    virtual bool insertTuple(TableTuple &tuple, size_t* drBufferChanged = NULL);
+    virtual bool insertTuple(TableTuple &tuple);
 
     virtual void loadTuplesFrom(SerializeInputBE &serialize_in, Pool *stringPool = NULL);
     virtual void flushOldTuples(int64_t timeInMillis);

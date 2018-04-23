@@ -113,7 +113,6 @@ ExecutorContext::ExecutorContext(int64_t siteId,
     m_staticParams(MAX_PARAM_COUNT),
     m_usedParamcnt(0),
     m_tuplesModifiedStack(),
-    m_drBufferChangedStack(),
     m_executorsMap(NULL),
     m_subqueryContextMap(),
     m_drStream(drStream),
@@ -323,11 +322,6 @@ void ExecutorContext::resetExecutionMetadata(ExecutorVector* executorVector) {
         m_tuplesModifiedStack.pop();
     }
     assert (m_tuplesModifiedStack.size() == 0);
-
-    if (m_drBufferChangedStack.size() != 0) {
-        m_drBufferChangedStack.pop();
-    }
-    assert (m_drBufferChangedStack.size() == 0);
 
     executorVector->resetLimitStats();
 }

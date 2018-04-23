@@ -91,7 +91,7 @@ bool DeleteExecutor::p_execute(const NValueArray &params) {
     TableTuple targetTuple(targetTable->schema());
 
     int64_t modified_tuples = 0;
-    size_t drBufferChanged = 0;
+
     {
         assert(targetTable->isCatalogTableReplicated() ==
                 (m_replicatedTableOperation || SynchronizedThreadLock::isInSingleThreadMode()));
@@ -129,7 +129,7 @@ bool DeleteExecutor::p_execute(const NValueArray &params) {
                     targetTuple.move(targetAddress);
 
                     // Delete from target table
-                    targetTable->deleteTuple(targetTuple, true, &drBufferChanged);
+                    targetTable->deleteTuple(targetTuple, true);
                 }
                 modified_tuples = m_inputTable->tempTableTupleCount();
                 VOLT_TRACE("Deleted %d rows from table : %s with %d active, %d visible, %d allocated",
@@ -170,8 +170,6 @@ bool DeleteExecutor::p_execute(const NValueArray &params) {
         return false;
     }
     m_engine->addToTuplesModified(modified_tuples);
-    VOLT_DEBUG("DeleteExecutor Add DR Buffer Change to %d", (int)drBufferChanged);
-    m_engine->addToDrBufferModified(drBufferChanged);
 
     return true;
 }

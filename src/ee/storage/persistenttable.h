@@ -274,10 +274,9 @@ public:
     // The initial use case is a live catalog update that changes table schema
     // and migrates tuples and/or adds a materialized view.
     // Constraint checks are bypassed and the change does not make use of "undo" support.
-    // drBufferChanged count the size of buffer change for dr.
-    void deleteTuple(TableTuple& tuple, bool fallible = true, size_t* drBufferChanged = NULL);
+    void deleteTuple(TableTuple& tuple, bool fallible = true);
     // TODO: change meaningless bool return type to void (starting in class Table) and migrate callers.
-    virtual bool insertTuple(TableTuple& tuple, size_t* drBufferChanged = NULL);
+    virtual bool insertTuple(TableTuple& tuple);
     // Optimized version of update that only updates specific indexes.
     // The caller knows which indexes MAY need to be updated.
     // Note that inside update tuple the order of sourceTuple and
@@ -295,8 +294,7 @@ public:
                                         TableTuple& sourceTupleWithNewValues,
                                         std::vector<TableIndex*> const& indexesToUpdate,
                                         bool fallible = true,
-                                        bool updateDRTimestamp = true,
-                                        size_t* drBufferChanged = NULL);
+                                        bool updateDRTimestamp = true);
 
     // ------------------------------------------------------------------
     // INDEXES
@@ -328,7 +326,7 @@ public:
     // ------------------------------------------------------------------
     void deleteTupleForSchemaChange(TableTuple& target);
 
-    void insertPersistentTuple(TableTuple& source, bool fallible, bool ignoreTupleLimit = false, size_t* drBufferChanged = NULL);
+    void insertPersistentTuple(TableTuple& source, bool fallible, bool ignoreTupleLimit = false);
 
     /// This is not used in any production code path -- it is a convenient wrapper used by tests.
     bool updateTuple(TableTuple& targetTupleToUpdate, TableTuple& sourceTupleWithNewValues) {
@@ -634,9 +632,9 @@ private:
     // occurs. In case of exception, target tuple should be released, but the
     // source tuple's memory should still be retained until the exception is
     // handled.
-    void insertTupleCommon(TableTuple& source, TableTuple& target, bool fallible, bool shouldDRStream = true, bool delayTupleDelete= false, size_t* drBufferChanged = NULL);
+    void insertTupleCommon(TableTuple& source, TableTuple& target, bool fallible, bool shouldDRStream = true, bool delayTupleDelete= false);
 
-    void doInsertTupleCommon(TableTuple& source, TableTuple& target, bool fallible, bool shouldDRStream = true, bool delayTupleDelete = false, size_t* drBufferChanged = NULL);
+    void doInsertTupleCommon(TableTuple& source, TableTuple& target, bool fallible, bool shouldDRStream = true, bool delayTupleDelete = false);
 
     void insertTupleForUndo(char* tuple);
 
