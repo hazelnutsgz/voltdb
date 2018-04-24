@@ -463,6 +463,15 @@ public class QueryPlanner implements AutoCloseable {
         if (parsedStmt instanceof ParsedSelectStmt) {
             ((ParsedSelectStmt)parsedStmt).checkPlanColumnMatch(bestPlan.rootPlanGraph.getOutputSchema());
         }
+        if (m_isLargeQuery) {
+            if (parsedStmt.isDML()) {
+                throw new PlanningErrorException("DML in large query mode is not supported.");
+            }
+            if (parsedStmt instanceof ParsedSelectStmt
+                    && ((ParsedSelectStmt)parsedStmt).hasWindowFunctionExpression()) {
+                throw new PlanningErrorException("Window function in large query mode is not supported.");
+            }
+        }
 
         // reset all the plan node ids for a given plan
         // this makes the ids deterministic

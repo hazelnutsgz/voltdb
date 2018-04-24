@@ -32,6 +32,23 @@ import org.voltdb.compiler.VoltProjectBuilder;
 
 public class TestAdHocLargeSuite extends RegressionSuite {
 
+    public void testUnsupported() throws Exception {
+        Client client = getClient();
+        // DML
+        String[] DMLs = {
+                "insert into t values (1, '2', '3', '4');",
+                "delete from t;",
+                "update t set i=0;"
+        };
+        for (String dml : DMLs) {
+            verifyProcFails(client, "DML in large query mode is not supported.", "@AdHocLarge", dml);
+        }
+
+        // Window function
+        String windowFunc = "select count(*) over (partition by i) from t;";
+        verifyProcFails(client, "Window function in large query mode is not supported.", "@AdHocLarge", windowFunc);
+    }
+
     public void testBasic() throws Exception {
         if (isValgrind()) {
             // don't run this test under valgrind, as it needs IPC support.
@@ -136,8 +153,11 @@ public class TestAdHocLargeSuite extends RegressionSuite {
                 "create table t (i integer not null, " //  8
                 + "inl_vc00 varchar(63 bytes), "       // 64
                 + "inl_vc01 varchar(63 bytes), "       // 64
-                + "longval varchar(500000));");        //  8 (pointer to StringRef)
-        //                                        -->    145 bytes per tuple (not counting non-inlined data)
+                + "longval varchar(500000));"          //  8 (pointer to StringRef)
+                                                   // --> 145 bytes per tuple (not counting non-inlined data)
+                + "create table tp (i integer not null, foo integer not null);"
+                + "create index idx on t(i);");
+        project.addPartitionInfo("tp", "i");
 
         project.setQueryTimeout(1000 * 60 * 5); // five minutes
         config = new LocalCluster("adhoclarge-voltdbBackend.jar", 2, 1, 0, BackendTarget.NATIVE_EE_JNI);
