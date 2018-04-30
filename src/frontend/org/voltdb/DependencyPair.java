@@ -39,7 +39,7 @@ public abstract class DependencyPair {
 
     public abstract VoltTable getTableDependency();
 
-    public int getDRBufferChanged() {return 0;}
+    public int getDRBufferChange() {return 0;}
 
     /*
      * Concrete class for a DependencyPair that is created from a VoltTable but may
@@ -75,7 +75,7 @@ public abstract class DependencyPair {
         private final byte[] dependencyByteArray;
         private final int startPosition;
         private final int totalLen;
-        private final int drBufferChanged;
+        private final int drBufferChange;
         private VoltTable dependencyTable = null;
 
         public BufferDependencyPair(int depId, byte[] dependency, int startPosition, int totalLen) {
@@ -89,7 +89,7 @@ public abstract class DependencyPair {
             this.dependencyByteArray = dependency;
             this.startPosition = startPosition;
             this.totalLen = totalLen;
-            this.drBufferChanged = drBufferSize;
+            this.drBufferChange = drBufferSize;
         }
 
         public ByteBuffer getBufferDependency() {
@@ -104,8 +104,8 @@ public abstract class DependencyPair {
         }
 
         @Override
-        public int getDRBufferChanged() {
-            return drBufferChanged;
+        public int getDRBufferChange() {
+            return drBufferChange;
         }
     }
 }

@@ -56,7 +56,7 @@ public class MpTransactionState extends TransactionState
 {
     static VoltLogger tmLog = new VoltLogger("TM");
 
-    private static final int MAX_DR_BUFFER_SIZE = (45 * 1024 * 1024) + 4096;
+    static final int DR_MAX_AGGREGATE_BUFFERSIZE = Integer.getInteger("DR_MAX_AGGREGATE_BUFFERSIZE", (45 * 1024 * 1024) + 4096);
     private static final String volt_output_buffer_overflow = "V0001";
 
     /**
@@ -414,12 +414,16 @@ public class MpTransactionState extends TransactionState
     }
 
     private void checkForDRBufferLimit() {
-        tmLog.debug("drBufferChanged: " + m_drBufferChangedAgg + " limit:" + MAX_DR_BUFFER_SIZE);
-        if (m_drBufferChangedAgg >= MAX_DR_BUFFER_SIZE) {
-            tmLog.debug("rollback for dr limit");
+        if (tmLog.isTraceEnabled()) {
+            tmLog.trace("Total DR buffer allocate for this txn: " + m_drBufferChangedAgg + " limit:" + DR_MAX_AGGREGATE_BUFFERSIZE);
+        }
+        if (m_drBufferChangedAgg >= DR_MAX_AGGREGATE_BUFFERSIZE) {
+            if (tmLog.isDebugEnabled()) {
+                tmLog.debug("Transaction txnid: " + TxnEgo.txnIdToString(txnId) + " exceeding DR Buffer Limit, need rollback.");
+            }
             setNeedsRollback(true);
             throw new SQLException(volt_output_buffer_overflow,
-                    "Aggregate MP Transaction requiring " + m_drBufferChangedAgg + " bytes  exceeds max DR Buffer size of " + MAX_DR_BUFFER_SIZE + " bytes.");
+                    "Aggregate MP Transaction requiring " + m_drBufferChangedAgg + " bytes exceeds max DR Buffer size of " + DR_MAX_AGGREGATE_BUFFERSIZE + " bytes.");
         }
     }
 
@@ -456,9 +460,15 @@ public class MpTransactionState extends TransactionState
             // null dependency table is from a joining node, has no content, drop it
             if (table.getStatusCode() != VoltTableUtil.NULL_DEPENDENCY_STATUS) {
                 tables.add(table);
-                tmLog.debug("[trackDependency]:  drBufferSize:" + drBufferSize + " m_drBufferChangedAgg: " + m_drBufferChangedAgg);
-                // add up dr buffer change size
+                // aggregate dr buffer change size
                 m_drBufferChangedAgg += drBufferSize;
+                if (tmLog.isDebugEnabled()) {
+                    tmLog.debug("[trackDependency]:  drBufferSize added :" + drBufferSize +
+                            " aggregated drBufferSize: " + m_drBufferChangedAgg +
+                            " for transaction: " + TxnEgo.txnIdToString(txnId) +
+                            " for depId: " + depId +
+                            " for partition: " + CoreUtils.hsIdToString(hsid));
+                }
             }
         }
         else if (tmLog.isDebugEnabled()){

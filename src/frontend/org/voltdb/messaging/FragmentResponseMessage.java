@@ -178,7 +178,7 @@ public class FragmentResponseMessage extends VoltMessage {
     }
 
     public int getDRBufferChangedAtIndex(int index) {
-        return m_dependencies.get(index).getDRBufferChanged();
+        return m_dependencies.get(index).getDRBufferChange();
     }
 
     public SerializableException getException() {

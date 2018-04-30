@@ -19,6 +19,7 @@ package org.voltdb.exceptions;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Exceptions that are intended to be caught by the user in a stored procedure are SQLExceptions
@@ -45,13 +46,7 @@ public class SQLException extends SerializableException {
         super(message);
         assert(sqlState.length() == 5);
         byte[] sqlStateBytes = null;
-        try {
-            sqlStateBytes = sqlState.getBytes("UTF-8");
-        } catch (UnsupportedEncodingException e1) {
-            sqlStateBytes = new byte[5];
-            e1.printStackTrace();
-            assert(false);
-        }
+        sqlStateBytes = sqlState.getBytes(StandardCharsets.UTF_8);
         assert(sqlStateBytes.length == 5);
         m_sqlState = sqlStateBytes;
     }
@@ -59,13 +54,7 @@ public class SQLException extends SerializableException {
     public SQLException(String sqlState) {
         assert(sqlState.length() == 5);
         byte[] sqlStateBytes = null;
-        try {
-            sqlStateBytes = sqlState.getBytes("UTF-8");
-        } catch (UnsupportedEncodingException e1) {
-            sqlStateBytes = new byte[5];
-            e1.printStackTrace();
-            assert(false);
-        }
+        sqlStateBytes = sqlState.getBytes(StandardCharsets.UTF_8);
         assert(sqlStateBytes.length == 5);
         m_sqlState = sqlStateBytes;
     }

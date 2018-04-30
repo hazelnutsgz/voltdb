@@ -353,7 +353,6 @@ public class FragmentTask extends FragmentTaskBase
                     fragResult.readInt();
                     // read the dependencyId() -1;
                     drBufferChanged = fragResult.readInt();
-                    LOG.debug("DR Buffer" + drBufferChanged);
                     tableSize = fragResult.readInt();
                     fullBacking = new byte[tableSize];
                     // get a copy of the buffer

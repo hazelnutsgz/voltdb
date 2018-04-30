@@ -726,14 +726,14 @@ void VoltDBEngine::send(Table* dependency) {
     // legacy placeholder for old output id
     // repurpose the placeholder to store bytes of Buffer allocated for DR
 
-    size_t drBufferChanged = size_t(0);
+    size_t drBufferChange = size_t(0);
     if (m_drStream) {
-        drBufferChanged = m_drStream->m_uso - m_drStream->m_committedUso;
+        drBufferChange = m_drStream->m_uso - m_drStream->m_committedUso;
         if (m_drReplicatedStream) {
-            drBufferChanged += m_drReplicatedStream->m_uso - m_drReplicatedStream->m_committedUso;
+            drBufferChange += m_drReplicatedStream->m_uso - m_drReplicatedStream->m_committedUso;
         }
     }
-    m_resultOutput.writeInt(static_cast<int>(drBufferChanged));
+    m_resultOutput.writeInt(static_cast<int>(drBufferChange));
     dependency->serializeTo(m_resultOutput);
     m_numResultDependencies++;
 }
