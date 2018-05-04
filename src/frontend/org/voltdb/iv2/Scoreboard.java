@@ -37,7 +37,7 @@ public class Scoreboard {
     private Deque<Pair<CompleteTransactionTask, Boolean>> m_compTasks = new ArrayDeque<>(2);
     private FragmentTaskBase m_fragTask;
 
-    public void addCompletedTransactionTask(CompleteTransactionTask task, Boolean missingTxn) {
+    public boolean addCompletedTransactionTask(CompleteTransactionTask task, Boolean missingTxn) {
         if (task.getTimestamp() == CompleteTransactionMessage.INITIAL_TIMESTAMP &&
                 (m_compTasks.peekFirst() != null || missingTxn)) {
             // This is an extremely rare case were a MPI repair arrives before the dead MPI's completion
@@ -45,6 +45,7 @@ public class Scoreboard {
             if (!missingTxn) {
                 assert(MpRestartSequenceGenerator.isForRestart(m_compTasks.peekFirst().getFirst().getTimestamp()));
             }
+            return false;
         }
         else
         if (task.getTimestamp() == CompleteTransactionMessage.INITIAL_TIMESTAMP ||
@@ -72,6 +73,7 @@ public class Scoreboard {
             m_compTasks.addLast(Pair.of(task, missingTxn));
             m_fragTask = null;
         }
+        return true;
     }
 
     public String toString() {
