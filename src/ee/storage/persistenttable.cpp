@@ -1590,6 +1590,7 @@ void PersistentTable::processLoadedTuple(TableTuple& tuple,
         }
         insertTupleCommon(tuple, tuple, true, shouldDRStreamRows, !uniqueViolationOutput);
     } catch (ConstraintFailureException& e) {
+        VOLT_ERROR("ProcessLoadedTuple caught ConstraintFailureException %s", e.message().c_str());
         if ( ! uniqueViolationOutput) {
             throw;
         }
